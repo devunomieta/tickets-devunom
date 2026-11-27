@@ -56,9 +56,22 @@ export const App: FC<
                     position: "fixed",
                     background: "#ffffff",
                     zIndex: 1000,
-                    display: isLoadedOnBrowser ? "none" : "block",
+                    display: isLoadedOnBrowser ? "none" : "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                 }}
-            />}
+            >
+                <div
+                    style={{
+                        width: 36,
+                        height: 36,
+                        border: "3px solid #f0e6f5",
+                        borderTopColor: "#cd58dd",
+                        borderRadius: "50%",
+                        animation: "initial-spin 0.7s linear infinite",
+                    }}
+                />
+            </div>}
             <MantineProvider
                 cssVariablesResolver={v8CssVariablesResolver}
                 theme={{
