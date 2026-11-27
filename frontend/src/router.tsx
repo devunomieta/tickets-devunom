@@ -11,6 +11,12 @@ import { eventContentWidgetRouteLoader, organizerWidgetRouteLoader, ticketWidget
 import { signupFormRouteLoader } from "./ee/crm/routeLoaders/signupFormRouteLoader.ts";
 import { campaignUnsubscribeRouteLoader, subscriptionConfirmRouteLoader } from "./ee/crm/routeLoaders/tokenPageRouteLoaders.ts";
 
+const PageLoader = () => (
+    <div id="initial-loader" aria-label="Loading">
+        <div className="spinner" />
+    </div>
+);
+
 const Root = () => {
     const [redirectPath, setRedirectPath] = useState<string | null>(null);
     const me = useGetMe();
@@ -26,6 +32,8 @@ const Root = () => {
     if (redirectPath) {
         return <Navigate to={redirectPath} replace={true} />;
     }
+
+    return <PageLoader />;
 };
 
 const routes: RouteObject[] = [
@@ -1049,6 +1057,7 @@ const routes: RouteObject[] = [
 export const router: RouteObject[] = [
     {
         loader: unsafePathRouteLoader,
+        HydrateFallback: PageLoader,
         errorElement: <ErrorPage />,
         children: routes,
     },
