@@ -25,7 +25,12 @@ RUN composer install \
     --no-interaction \
     --no-dev \
     --optimize-autoloader \
-    --prefer-dist
+    --prefer-dist \
+    && composer require resend/resend-php \
+    --ignore-platform-reqs \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader
 
 RUN mkdir -p /var/www/html/vendor/ezyang/htmlpurifier/library/HTMLPurifier/DefinitionCache/Serializer \
     && chmod -R 775 /var/www/html/vendor/ezyang/htmlpurifier/library/HTMLPurifier/DefinitionCache/Serializer \
