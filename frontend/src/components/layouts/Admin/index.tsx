@@ -55,7 +55,11 @@ const AdminLayout = () => {
     }, [isMeFetched, isSuperAdmin, navigate]);
 
     if (!isSuperAdmin) {
-        return null;
+        return (
+            <div id="initial-loader" aria-label="Loading">
+                <div className="spinner" />
+            </div>
+        );
     }
 
     return (
