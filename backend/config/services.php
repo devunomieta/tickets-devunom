@@ -26,6 +26,10 @@ return [
         'webhook_secret' => env('POSTMARK_WEBHOOK_SECRET'),
     ],
 
+    'resend' => [
+        'key' => env('RESEND_KEY', env('MAIL_PASSWORD')),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
