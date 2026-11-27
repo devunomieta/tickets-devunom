@@ -38,6 +38,7 @@ class EnsureSuperAdminCommand extends Command
                 first_name: 'Super',
                 last_name: 'Admin',
                 email: $email,
+                locale: 'en',
                 password: $password,
                 timezone: 'UTC',
                 currency_code: 'USD',
