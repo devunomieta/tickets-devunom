@@ -1,0 +1,919 @@
+import {t} from "@lingui/macro";
+import {NavLink, useNavigate, useParams, useLocation} from "react-router";
+import {ActionIcon, Alert, Button, Group, SimpleGrid, Text, Tooltip} from "@mantine/core";
+import {
+    IconBuilding,
+    IconCalendar,
+    IconCalendarEvent,
+    IconCash,
+    IconCheck,
+    IconClock,
+    IconDeviceMobile,
+    IconEdit,
+    IconArrowsExchange,
+    IconExternalLink,
+    IconId,
+    IconMail,
+    IconMapPin,
+    IconMenuOrder,
+    IconPrinter,
+    IconReceiptRefund,
+    IconSend,
+    IconTicket,
+    IconUser
+} from "@tabler/icons-react";
+import {useEffect, useState} from "react";
+import {useQueryClient} from "@tanstack/react-query";
+
+import {useGetOrderPublic, GET_ORDER_PUBLIC_QUERY_KEY} from "../../../../queries/useGetOrderPublic.ts";
+import {eventCheckoutPath} from "../../../../utilites/urlHelper.ts";
+import {dateToBrowserTz, prettyDate} from "../../../../utilites/dates.ts";
+import {formatAddress} from "../../../../utilites/addressUtilities.ts";
+import {getEventLocationDisplay, resolveEventLocation} from "../../../../utilites/effectiveLocation.ts";
+import {getAttendeeProductTitle} from "../../../../utilites/products.ts";
+import {showSuccess, showError} from "../../../../utilites/notifications.tsx";
+
+import {Card} from "../../../common/Card";
+import {LoadingMask} from "../../../common/LoadingMask";
+import {HomepageInfoMessage} from "../../../common/HomepageInfoMessage";
+import {PoweredByFooter} from "../../../common/PoweredByFooter";
+import {EventDateRange} from "../../../common/EventDateRange";
+import {OnlineEventDetails} from "../../../common/OnlineEventDetails";
+import {AddToCalendarCTA} from "../../../common/AddToCalendarCTA";
+import {InlineOrderSummary} from "../../../common/InlineOrderSummary";
+import {CheckoutContent} from "../../../layouts/Checkout/CheckoutContent";
+import {CheckoutStepTitle} from "../../../layouts/Checkout/CheckoutStepTitle";
+import {EditAttendeeModal} from "./EditAttendeeModal";
+import {useTicketTransferActions} from "../../../../hooks/useTicketTransferActions.tsx";
+import {TicketTransferPending} from "../../../common/TicketTransfer/TicketTransferPending.tsx";
+import {useTicketResaleActions} from "../../../../hooks/useTicketResaleActions.tsx";
+import {TicketResaleListed} from "../../../common/TicketResale/TicketResaleListed.tsx";
+import {useSelfServiceVerification} from "../../../../hooks/useSelfServiceVerification.tsx";
+import {clearSelfServiceSession, getSelfServiceToken} from "../../../../utilites/selfServiceSession.ts";
+import {ChangeSeatButton} from "../../../../ee/seating/components/ChangeSeatButton";
+import {canAttendeeChangeSeat} from "../../../../ee/seating/components/ChangeSeatButton/canAttendeeChangeSeat.ts";
+import {EditOrderModal} from "./EditOrderModal";
+
+import {useEditAttendeePublic} from "../../../../mutations/useEditAttendeePublic";
+import {useEditOrderPublic} from "../../../../mutations/useEditOrderPublic";
+import {useResendAttendeeTicketPublic} from "../../../../mutations/useResendAttendeeTicketPublic";
+import {useResendOrderConfirmationPublic} from "../../../../mutations/useResendOrderConfirmationPublic";
+
+import {Attendee, Event, IdParam, LocationType, Order, Product, TransferredTicket} from "../../../../types.ts";
+import classes from './OrderSummaryAndProducts.module.scss';
+import {clearWaitlistJoinedForEvent} from "../../../../hooks/useWaitlistJoined.ts";
+import {UserGeneratedContent} from "../../../common/UserGeneratedContent";
+import {formatPhoneNumber} from "../../../../utilites/phoneNumber.ts";
+import {OfflinePaymentDetails} from "../../../common/OfflinePaymentDetails";
+import {formatCurrency, plainAmount} from "../../../../utilites/currency.ts";
+import {ReportOfflinePayment} from "./ReportOfflinePayment";
+import {
+    SharePaymentDetailsEntryPoint,
+    SharePaymentDetailsModal,
+    usePaymentLinkModal,
+} from "../Payment/PaymentLink";
+
+const PaymentStatus = ({order}: { order: Order }) => {
+    const paymentStatuses: Record<string, string> = {
+        'NO_PAYMENT_REQUIRED': t`No Payment Required`,
+        'AWAITING_PAYMENT': t`Awaiting Payment`,
+        'PAYMENT_FAILED': t`Payment Failed`,
+        'PAYMENT_RECEIVED': t`Payment Received`,
+        'AWAITING_OFFLINE_PAYMENT': t`Awaiting Offline Payment`,
+    };
+
+    return order?.payment_status ? <span>{paymentStatuses[order.payment_status] || ''}</span> : null;
+};
+
+const RefundStatusType = ({order}: { order: Order }) => {
+    const refundStatuses: Record<string, string> = {
+        'REFUND_PENDING': t`Refund Pending`,
+        'REFUND_FAILED': t`Refund Failed`,
+        'REFUNDED': t`Refunded`,
+        'PARTIALLY_REFUNDED': t`Partially Refunded`,
+    };
+
+    return order?.refund_status ? <span>{refundStatuses[order.refund_status] || ''}</span> : null;
+};
+
+const GuestListItem = ({
+    attendee,
+    event,
+    orderShortId,
+    canChangeSeat,
+    allowSelfEdit,
+    onEditClick,
+    onResendClick,
+    onTransferClick,
+    onCancelTransferClick,
+    onSellClick,
+    onWithdrawListingClick,
+}: {
+    attendee: Attendee;
+    event: Event;
+    orderShortId: string;
+    canChangeSeat: boolean;
+    allowSelfEdit: boolean;
+    onEditClick: () => void;
+    onResendClick: () => void;
+    onTransferClick: () => void;
+    onCancelTransferClick: () => void;
+    onSellClick: () => void;
+    onWithdrawListingClick: () => void;
+}) => {
+    const productTitle = getAttendeeProductTitle(attendee, attendee.product as Product);
+    const isListedForResale = attendee.resale?.status === 'LISTED';
+    const isResold = attendee.resale?.status === 'SOLD';
+    const isCancelled = attendee.status === 'CANCELLED' && !isResold;
+
+    return (
+        <div
+            className={`${classes.guestItem} ${isCancelled || isResold ? classes.guestItemCancelled : ''}`}
+            data-testid="order-guest"
+        >
+            <div className={classes.guestInfo}>
+                <div className={classes.guestName}>
+                    <span className={classes.guestNameText}>{attendee.first_name} {attendee.last_name}</span>
+                    {isCancelled && <span className={classes.cancelledBadge}>{t`Cancelled`}</span>}
+                    {isListedForResale && <span className={classes.listedBadge}>{t`Listed for resale`}</span>}
+                    {isResold && <span className={classes.transferredBadge}>{t`Resold`}</span>}
+                </div>
+                <div className={classes.guestDetails}>
+                    {attendee.email ? <span className={classes.guestEmail}>{attendee.email}</span> : null}
+                    <span className={classes.guestProduct}>
+                        {[productTitle, attendee.seat_label].filter(Boolean).join(' · ')}
+                    </span>
+                </div>
+                {attendee.transfer?.pending && (
+                    <TicketTransferPending
+                        pending={attendee.transfer.pending}
+                        timezone={event.timezone}
+                        onCancel={onCancelTransferClick}
+                    />
+                )}
+                {isListedForResale && attendee.resale && (
+                    <TicketResaleListed
+                        resale={attendee.resale}
+                        timezone={event.timezone}
+                        onWithdraw={onWithdrawListingClick}
+                    />
+                )}
+                {isResold && (
+                    <div className={classes.guestNotice}>
+                        {t`Your refund is on its way to the card you paid with.`}
+                    </div>
+                )}
+            </div>
+            {!isListedForResale && !isResold && (
+                <div className={classes.guestActions}>
+                    <Tooltip label={t`View Ticket`}>
+                        <ActionIcon
+                            variant="subtle"
+                            aria-label={t`View Ticket`}
+                            onClick={() => window?.open(`/product/${event.id}/${attendee.short_id}`, '_blank')}
+                        >
+                            <IconExternalLink size={18}/>
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label={t`Print Ticket`}>
+                        <ActionIcon
+                            variant="subtle"
+                            aria-label={t`Print Ticket`}
+                            onClick={() => window?.open(`/product/${event.id}/${attendee.short_id}/print`, '_blank')}
+                        >
+                            <IconPrinter size={18}/>
+                        </ActionIcon>
+                    </Tooltip>
+                    {canChangeSeat && (
+                        <ChangeSeatButton eventId={event.id as IdParam} orderShortId={orderShortId} attendee={attendee}/>
+                    )}
+                    {attendee.transfer?.can_start && (
+                        <Tooltip label={t`Transfer Ticket`}>
+                            <ActionIcon
+                                variant="subtle"
+                                aria-label={t`Transfer Ticket`}
+                                data-testid="ticket-transfer-button"
+                                onClick={onTransferClick}
+                            >
+                                <IconArrowsExchange size={18}/>
+                            </ActionIcon>
+                        </Tooltip>
+                    )}
+                    {attendee.resale?.can_list && (
+                        <Tooltip label={t`Sell this ticket`}>
+                            <ActionIcon
+                                variant="subtle"
+                                aria-label={t`Sell this ticket`}
+                                data-testid="ticket-resale-button"
+                                onClick={onSellClick}
+                            >
+                                <IconReceiptRefund size={18}/>
+                            </ActionIcon>
+                        </Tooltip>
+                    )}
+                    {allowSelfEdit && !isCancelled && (
+                        <>
+                            <Tooltip label={t`Edit Attendee`}>
+                                <ActionIcon
+                                    variant="subtle"
+                                    data-testid="attendee-edit-button"
+                                    onClick={onEditClick}
+                                >
+                                    <IconEdit size={18}/>
+                                </ActionIcon>
+                            </Tooltip>
+                            {attendee.email ? (
+                                <Tooltip label={t`Resend Ticket`}>
+                                    <ActionIcon
+                                        variant="subtle"
+                                        data-testid="resend-ticket-button"
+                                        onClick={onResendClick}
+                                    >
+                                        <IconSend size={18}/>
+                                    </ActionIcon>
+                                </Tooltip>
+                            ) : null}
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const TransferredTicketItem = ({ticket, timezone}: { ticket: TransferredTicket; timezone: string }) => {
+    const recipient = ticket.recipient_email;
+    const transferredOn = prettyDate(ticket.transferred_at, timezone);
+
+    return (
+        <div className={`${classes.guestItem} ${classes.guestItemCancelled}`} data-testid="transferred-ticket">
+            <div className={classes.guestInfo}>
+                <div className={classes.guestName}>
+                    {ticket.product_title ?? t`Ticket`}
+                    <span className={classes.transferredBadge}>{t`Transferred`}</span>
+                </div>
+                <div className={classes.guestDetails}>
+                    <span>{t`Now held by ${recipient} since ${transferredOn}. It is no longer part of your order.`}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const DetailItem = ({icon: Icon, label, value}: { icon: any, label: string, value: React.ReactNode }) => (
+    <div className={classes.detailItem}>
+        <Group gap="xs" wrap="nowrap">
+            <Icon size={20} style={{color: 'var(--checkout-accent, var(--mantine-color-gray-6))', flexShrink: 0}}/>
+            <div className={classes.detailContent}>
+                <Text size="sm" c="dimmed" className={classes.label}>{label}</Text>
+                <Text className={classes.value}>{value}</Text>
+            </div>
+        </Group>
+    </div>
+);
+
+const WelcomeHeader = ({order, event, allowSelfEdit, isPayer}: {
+    order: Order;
+    event: Event;
+    allowSelfEdit: boolean;
+    isPayer: boolean;
+}) => {
+    const isCompleted = order.status === 'COMPLETED';
+    const isAwaitingPayment = order.status === 'AWAITING_OFFLINE_PAYMENT';
+    const isCancelled = order.status === 'CANCELLED';
+    const registrantName = order.first_name || order.email;
+
+    const message = {
+        'COMPLETED': isPayer ? t`Payment complete` : t`You're going to ${event.title}!`,
+        'CANCELLED': t`Your order has been cancelled`,
+        'RESERVED': null,
+        'AWAITING_OFFLINE_PAYMENT': isPayer ? t`Order placed, payment pending` : t`Your order is awaiting payment`,
+        'ABANDONED': null,
+    }[order.status];
+
+    if (!message) return null;
+
+    return (
+        <div className={classes.welcomeHeader}>
+            {isCompleted && (
+                <div className={classes.confettiIcon}>
+                    {/* eslint-disable-next-line lingui/no-unlocalized-strings */}
+                    <span>🎉</span>
+                </div>
+            )}
+            {isAwaitingPayment && (
+                <div className={classes.confettiIcon}>
+                    {/* eslint-disable-next-line lingui/no-unlocalized-strings */}
+                    <span>⏳</span>
+                </div>
+            )}
+            {isCancelled && (
+                <div className={classes.confettiIcon}>
+                    {/* eslint-disable-next-line lingui/no-unlocalized-strings */}
+                    <span>😔</span>
+                </div>
+            )}
+            <div className={classes.welcomeMessage}>{message}</div>
+            {isPayer && isCompleted && (
+                <div className={classes.confirmationText}>
+                    {t`Thank you. ${registrantName}'s order is confirmed and their confirmation has been emailed to`} <strong>{order.email}</strong>
+                </div>
+            )}
+            {isPayer && isAwaitingPayment && (
+                <div className={classes.confirmationText}>
+                    {t`Pay using the instructions below. ${registrantName} has been emailed the order details, and the organizer will confirm the order once your payment arrives.`}
+                </div>
+            )}
+            {!isPayer && isAwaitingPayment && (
+                <div className={classes.confirmationText}>
+                    {t`Your places are reserved. The organizer will confirm your order once your payment arrives.`}
+                </div>
+            )}
+            {!isPayer && isCompleted && order.email && (
+                <div className={classes.confirmationText}>
+                    {t`Confirmation sent to`} <strong>{order.email}</strong>
+                </div>
+            )}
+            {isCompleted && allowSelfEdit && !isPayer && (
+                <div className={classes.selfServiceHint}>
+                    {t`Bookmark this page to manage your order anytime.`}
+                </div>
+            )}
+            {isCancelled && order.email && (
+                <div className={classes.confirmationText}>
+                    {t`A cancellation notice has been sent to`} <strong>{order.email}</strong>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const OrderDetails = ({
+    order,
+    event,
+    allowSelfEdit,
+    onEditClick,
+    onResendClick,
+}: {
+    order: Order;
+    event: Event;
+    allowSelfEdit: boolean;
+    onEditClick: () => void;
+    onResendClick: () => void;
+}) => (
+    <Card style={{marginBottom: '40px'}}>
+        <SimpleGrid cols={{base: 1, sm: 2}} spacing="md">
+            <DetailItem
+                icon={IconUser}
+                label={t`Name`}
+                value={
+                    <Group gap="xs" wrap="nowrap">
+                        <span>{order.first_name} {order.last_name}</span>
+                        {allowSelfEdit && order.status !== 'CANCELLED' && (
+                            <Tooltip label={t`Edit`}>
+                                <ActionIcon size="xs" variant="subtle" data-testid="order-edit-button" onClick={onEditClick}>
+                                    <IconEdit size={14}/>
+                                </ActionIcon>
+                            </Tooltip>
+                        )}
+                    </Group>
+                }
+            />
+            <DetailItem
+                icon={IconId}
+                label={t`Order Reference`}
+                value={order.public_id}
+            />
+            {order.email ? (
+                <DetailItem
+                    icon={IconMail}
+                    label={t`Email`}
+                    value={
+                        <Group gap="xs" wrap="nowrap">
+                            <span style={{wordBreak: 'break-all'}}>{order.email}</span>
+                            {allowSelfEdit && order.status !== 'CANCELLED' && (
+                                <Tooltip label={t`Resend Confirmation`}>
+                                    <ActionIcon size="xs" variant="subtle" data-testid="resend-confirmation-button" onClick={onResendClick}>
+                                        <IconSend size={14}/>
+                                    </ActionIcon>
+                                </Tooltip>
+                            )}
+                        </Group>
+                    }
+                />
+            ) : null}
+            {order.phone && (
+                <DetailItem
+                    icon={IconDeviceMobile}
+                    label={t`Mobile Number`}
+                    value={formatPhoneNumber(order.phone)}
+                />
+            )}
+            <DetailItem
+                icon={IconCalendar}
+                label={t`Order Date`}
+                value={dateToBrowserTz(order.created_at, event.timezone)}
+            />
+            {!!order.refund_status && (
+                <DetailItem
+                    icon={IconMenuOrder}
+                    label={t`Refund Status`}
+                    value={<RefundStatusType order={order}/>}
+                />
+            )}
+            {(order.payment_status !== 'PAYMENT_RECEIVED' && order.payment_status !== 'NO_PAYMENT_REQUIRED') && (
+                <DetailItem
+                    icon={IconCash}
+                    label={t`Payment Status`}
+                    value={<PaymentStatus order={order}/>}
+                />
+            )}
+            {order.address && (
+                <DetailItem
+                    icon={IconMapPin}
+                    label={t`Billing Address`}
+                    value={formatAddress(order.address)}
+                />
+            )}
+        </SimpleGrid>
+    </Card>
+);
+
+const EventDetails = ({event, order}: { event: Event; order: Order }) => {
+    const orderOccurrence = order.order_items?.[0]?.event_occurrence;
+    const effective = resolveEventLocation(event, orderOccurrence);
+    const isInPerson = effective?.type === LocationType.InPerson;
+    const venueName = isInPerson
+        ? (effective.location?.name || effective.location?.structured_address?.venue_name || null)
+        : null;
+    const formattedAddress = isInPerson && effective.location?.structured_address
+        ? formatAddress(effective.location.structured_address)
+        : '';
+    const venueDetails = isInPerson
+        ? (venueName
+            ? `${venueName}${formattedAddress ? `, ${formattedAddress}` : ''}`
+            : formattedAddress || null)
+        : null;
+    const mapsUrl = getEventLocationDisplay(event, orderOccurrence)?.mapsUrl ?? '';
+
+    return (
+        <Card>
+            <SimpleGrid cols={{base: 1, sm: 2}} spacing="md">
+                <DetailItem
+                    icon={IconCalendarEvent}
+                    label={t`Event Date`}
+                    value={
+                        <>
+                            <EventDateRange event={event} occurrence={orderOccurrence}/>
+                            {orderOccurrence?.label && (
+                                <Text size="xs" c="dimmed" mt={2}>{orderOccurrence.label}</Text>
+                            )}
+                        </>
+                    }
+                />
+                {venueDetails && (
+                    <DetailItem
+                        icon={IconMapPin}
+                        label={t`Location`}
+                        value={(
+                            <NavLink
+                                to={mapsUrl}
+                                target="_blank"
+                            >
+                                {venueDetails}
+                            </NavLink>
+
+                        )}
+                    />
+                )}
+                <DetailItem
+                    icon={IconClock}
+                    label={t`Timezone`}
+                    value={event.timezone}
+                />
+                <DetailItem
+                    icon={IconBuilding}
+                    label={t`Organizer`}
+                    value={(
+                        <>
+                            {event.organizer?.email && (
+                                <NavLink to={event.organizer?.email ? `mailto:${event.organizer.email}` : '#'}>
+                                    {event.organizer?.name}
+                                </NavLink>
+                            )}
+                            {!event.organizer?.email && event.organizer?.name}
+                        </>
+                    )}
+                />
+            </SimpleGrid>
+        </Card>
+    );
+};
+
+const OrderStatus = ({order}: { order: Order }) => {
+    if (order?.status === 'CANCELLED') {
+        return (
+            <HomepageInfoMessage
+                status="cancelled"
+                message={t`Order cancelled`}
+                subtitle={t`This order has been cancelled.`}
+            />
+        );
+    }
+
+    if (order?.status === 'COMPLETED') {
+        return (
+            <HomepageInfoMessage
+                status="success"
+                message={t`Order complete`}
+                subtitle={t`This order is complete.`}
+            />
+        );
+    }
+
+    return (
+        <HomepageInfoMessage
+            status="processing"
+            message={t`Processing order`}
+            subtitle={t`This order is being processed.`}
+        />
+    );
+};
+
+const PostCheckoutMessage = ({ message }: { message: string }) => (
+    <div style={{ marginTop: '20px', marginBottom: '40px' }}>
+        <h1 className={classes.heading}>{t`Additional Information`}</h1>
+        <Card>
+            <UserGeneratedContent html={message} />
+        </Card>
+    </div>
+);
+
+const OfflinePaymentInstructions = ({event, order, canShare}: { event: Event; order: Order; canShare: boolean }) => {
+    const shareModal = usePaymentLinkModal();
+
+    return (
+        <div style={{marginTop: '20px', marginBottom: '40px'}}>
+            <h2>{t`How to pay`}</h2>
+            <Card>
+                <OfflinePaymentDetails
+                    amount={formatCurrency(order.total_gross, order.currency)}
+                    amountToCopy={plainAmount(order.total_gross, order.currency)}
+                    reference={event?.settings?.offline_payment_order_reference_enabled ? order.public_id : null}
+                />
+                <UserGeneratedContent html={event?.settings?.offline_payment_instructions || ""}/>
+            </Card>
+            {canShare && (
+                <>
+                    <SharePaymentDetailsEntryPoint order={order} event={event} onReady={shareModal.open}/>
+                    <SharePaymentDetailsModal opened={shareModal.opened} onClose={shareModal.close} order={order} event={event}/>
+                </>
+            )}
+        </div>
+    );
+};
+
+export const OrderSummaryAndProducts = () => {
+    const {eventId, orderShortId} = useParams();
+    const location = useLocation();
+    const {data: order, isFetched: orderIsFetched, isError} = useGetOrderPublic(eventId, orderShortId, ['event']);
+    const event = order?.event;
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const emailUpdated = location.state?.emailUpdated === true;
+
+    const [editingAttendee, setEditingAttendee] = useState<Attendee | null>(null);
+    const [editOrderModalOpened, setEditOrderModalOpened] = useState(false);
+    const isPayer = !!order?.is_payment_link_payer;
+
+    useEffect(() => {
+        if (eventId && order && (order.status === 'COMPLETED' || order.status === 'AWAITING_OFFLINE_PAYMENT')) {
+            clearWaitlistJoinedForEvent(eventId);
+        }
+    }, [eventId, order?.status]);
+
+    const editAttendeeMutation = useEditAttendeePublic();
+    const editOrderMutation = useEditOrderPublic();
+    const resendAttendeeTicketMutation = useResendAttendeeTicketPublic();
+    const resendOrderConfirmationMutation = useResendOrderConfirmationPublic();
+
+    const allowSelfEdit = (event?.settings?.allow_attendee_self_edit ?? false) && !isPayer;
+    const selfServiceLink = {eventId: eventId!, orderShortId: orderShortId!};
+    const {requireVerification, startVerification, verificationModal} = useSelfServiceVerification(selfServiceLink);
+    const {openTransfer, cancelTransfer, transferModals} = useTicketTransferActions(selfServiceLink);
+    const {openSell, withdrawListing, resaleModals} = useTicketResaleActions(selfServiceLink, event?.timezone);
+
+    const retryAfterVerification = (error: any, retry: () => void): boolean => {
+        if (error?.response?.status !== 422 || !error?.response?.data?.errors?.email || !getSelfServiceToken(selfServiceLink)) {
+            return false;
+        }
+
+        clearSelfServiceSession(selfServiceLink);
+        startVerification(retry);
+
+        return true;
+    };
+
+    const handleEditAttendee = (attendee: Attendee, data: any) => {
+        editAttendeeMutation.mutate(
+            {
+                eventId: eventId!,
+                orderShortId: orderShortId!,
+                attendeeShortId: attendee.short_id,
+                data,
+            },
+            {
+                onSuccess: (result) => {
+                    queryClient.invalidateQueries({queryKey: [GET_ORDER_PUBLIC_QUERY_KEY]});
+                    setEditingAttendee(null);
+                    showSuccess(result.message || t`Attendee updated successfully`);
+                    if (result.warning) {
+                        showError(result.warning);
+                    }
+                },
+                onError: (error: any) => {
+                    if (retryAfterVerification(error, () => handleEditAttendee(attendee, data))) {
+                        return;
+                    }
+                    if (error?.response?.status === 429) {
+                        showError(t`Rate limit exceeded. Please try again later.`);
+                    } else {
+                        showError(error?.response?.data?.errors?.email?.[0] || error?.response?.data?.message || t`Failed to update attendee`);
+                    }
+                },
+            }
+        );
+    };
+
+    const handleEditOrder = (data: any) => {
+        editOrderMutation.mutate(
+            {
+                eventId: eventId!,
+                orderShortId: orderShortId!,
+                data,
+            },
+            {
+                onSuccess: (result) => {
+                    setEditOrderModalOpened(false);
+                    showSuccess(result.message || t`Order updated successfully`);
+
+                    if (result.new_short_id) {
+                        navigate(`/checkout/${eventId}/${result.new_short_id}/summary`, {
+                            state: { emailUpdated: true }
+                        });
+                    } else {
+                        queryClient.invalidateQueries({queryKey: [GET_ORDER_PUBLIC_QUERY_KEY]});
+                    }
+
+                    if (result.warning) {
+                        showError(result.warning);
+                    }
+                },
+                onError: (error: any) => {
+                    if (retryAfterVerification(error, () => handleEditOrder(data))) {
+                        return;
+                    }
+                    if (error?.response?.status === 429) {
+                        showError(t`Rate limit exceeded. Please try again later.`);
+                    } else {
+                        showError(error?.response?.data?.errors?.email?.[0] || error?.response?.data?.message || t`Failed to update order`);
+                    }
+                },
+            }
+        );
+    };
+
+    const handleResendAttendeeTicket = (attendee: Attendee) => {
+        if (!window.confirm(t`Are you sure you want to resend the ticket to ${attendee.email}?`)) {
+            return;
+        }
+        resendAttendeeTicketMutation.mutate(
+            {
+                eventId: eventId!,
+                orderShortId: orderShortId!,
+                attendeeShortId: attendee.short_id,
+            },
+            {
+                onSuccess: (result) => {
+                    showSuccess(result.message || t`Ticket resent successfully`);
+                },
+                onError: (error: any) => {
+                    if (error?.response?.status === 429) {
+                        showError(t`Rate limit exceeded. Please try again later.`);
+                    } else {
+                        showError(error?.response?.data?.message || t`Failed to resend ticket`);
+                    }
+                },
+            }
+        );
+    };
+
+    const handleResendOrderConfirmation = () => {
+        if (!window.confirm(t`Are you sure you want to resend the order confirmation to ${order?.email}?`)) {
+            return;
+        }
+        resendOrderConfirmationMutation.mutate(
+            {
+                eventId: eventId!,
+                orderShortId: orderShortId!,
+            },
+            {
+                onSuccess: (result) => {
+                    showSuccess(result.message || t`Order confirmation resent successfully`);
+                },
+                onError: (error: any) => {
+                    if (error?.response?.status === 429) {
+                        showError(t`Rate limit exceeded. Please try again later.`);
+                    } else {
+                        showError(error?.response?.data?.message || t`Failed to resend order confirmation`);
+                    }
+                },
+            }
+        );
+    };
+
+    if (isError) {
+        return (
+            <HomepageInfoMessage
+                status="not_found"
+                message={t`Order Not Found`}
+                subtitle={t`We couldn't find the order you're looking for. The link may have expired or the order details may have changed.`}
+            />
+        );
+    }
+
+    if (!orderIsFetched || !order || !event) {
+        return <LoadingMask/>;
+    }
+
+    if ((typeof window !== 'undefined' && window.location.search.includes('failed')) || order?.payment_status === 'PAYMENT_FAILED') {
+        navigate(eventCheckoutPath(eventId, orderShortId, 'payment') + '?payment_failed=true');
+        return;
+    }
+
+    if (order?.status !== 'COMPLETED' && order?.status !== 'CANCELLED' && order?.status !== 'AWAITING_OFFLINE_PAYMENT') {
+        return <OrderStatus order={order}/>;
+    }
+
+    return (
+        <>
+            <CheckoutContent>
+                <CheckoutStepTitle title={t`Summary`}/>
+
+                <WelcomeHeader
+                    order={order}
+                    event={event}
+                    allowSelfEdit={allowSelfEdit}
+                    isPayer={isPayer}
+                />
+
+                {emailUpdated && (
+                    <Alert
+                        icon={<IconCheck size={16}/>}
+                        color="green"
+                        mb="lg"
+                        radius="lg"
+                        style={{
+                            backgroundColor: 'var(--checkout-surface, #ECFDF5)',
+                            borderColor: 'var(--checkout-border, #D1FAE5)',
+                        }}
+                    >
+                        <Text size="sm" style={{color: 'var(--checkout-text-primary, #065F46)'}}>
+                            {t`Your order details have been updated. A confirmation email has been sent to the new email address.`}
+                        </Text>
+                    </Alert>
+                )}
+
+                <InlineOrderSummary
+                    event={event}
+                    order={order}
+                    showBuyerProtection={false}
+                    defaultExpanded={false}
+                />
+
+                {order?.status === 'AWAITING_OFFLINE_PAYMENT' && <OfflinePaymentInstructions
+                    event={event}
+                    order={order}
+                    canShare={!isPayer
+                        && !!order.is_payment_required
+                        && !!event?.settings?.payment_links_enabled
+                        && !!event?.settings?.payment_providers?.includes('OFFLINE')}
+                />}
+
+                {(order?.status === 'AWAITING_OFFLINE_PAYMENT' && event?.settings?.offline_payment_reporting_enabled) && (
+                    <ReportOfflinePayment order={order} event={event}/>
+                )}
+
+                <h1 className={classes.heading}>{t`Order Details`}</h1>
+
+                <OrderDetails
+                    order={order}
+                    event={event}
+                    allowSelfEdit={allowSelfEdit}
+                    onEditClick={() => setEditOrderModalOpened(true)}
+                    onResendClick={handleResendOrderConfirmation}
+                />
+
+                <OnlineEventDetails event={event} occurrence={order.order_items?.[0]?.event_occurrence ?? null}/>
+
+                {!!event?.settings?.post_checkout_message && <PostCheckoutMessage message={event.settings.post_checkout_message}/>}
+
+                <h1 className={classes.heading}>{t`Event Details`}</h1>
+                <EventDetails event={event} order={order}/>
+
+                {(order.status === 'COMPLETED' && !isPayer) && <AddToCalendarCTA event={event} occurrence={order.order_items?.[0]?.event_occurrence}/>}
+
+                {(!isPayer && ((order?.attendees?.length ?? 0) > 0 || (order?.transferred_tickets?.length ?? 0) > 0)) && (
+                    <>
+                        <Group justify="space-between" align="center">
+                            <h1 className={classes.heading}>
+                                <Group gap="xs">
+                                    <IconTicket size={20}/>
+                                    {t`Guests`}
+                                </Group>
+                            </h1>
+                            {(order.attendees?.length ?? 0) > 0 && (
+                                <Button
+                                    size="sm"
+                                    variant="subtle"
+                                    leftSection={<IconPrinter size={16}/>}
+                                    onClick={() => window?.open(`/order/${eventId}/${orderShortId}/print`, '_blank')}
+                                >
+                                    {t`Print All Tickets`}
+                                </Button>
+                            )}
+                        </Group>
+
+                        <Card>
+                            <div className={classes.guestList}>
+                                {(order.attendees ?? []).map((attendee) => (
+                                    <GuestListItem
+                                        key={attendee.id}
+                                        attendee={attendee}
+                                        event={event}
+                                        orderShortId={orderShortId as string}
+                                        canChangeSeat={canAttendeeChangeSeat(attendee, order.status, allowSelfEdit)}
+                                        allowSelfEdit={allowSelfEdit}
+                                        onEditClick={() => setEditingAttendee(attendee)}
+                                        onResendClick={() => handleResendAttendeeTicket(attendee)}
+                                        onTransferClick={() => openTransfer(attendee)}
+                                        onCancelTransferClick={() => cancelTransfer(attendee)}
+                                        onSellClick={() => openSell(attendee)}
+                                        onWithdrawListingClick={() => withdrawListing(attendee)}
+                                    />
+                                ))}
+                                {(order.transferred_tickets ?? []).map((ticket) => (
+                                    <TransferredTicketItem
+                                        key={`${ticket.product_id}-${ticket.transferred_at}-${ticket.recipient_email}`}
+                                        ticket={ticket}
+                                        timezone={event.timezone}
+                                    />
+                                ))}
+                            </div>
+                        </Card>
+                    </>
+                )}
+
+                <PoweredByFooter brandingRemoved={event.organizer?.branding_removed}/>
+            </CheckoutContent>
+
+            {editingAttendee && (
+                <EditAttendeeModal
+                    opened={!!editingAttendee}
+                    onClose={() => setEditingAttendee(null)}
+                    attendee={editingAttendee}
+                    onSuccess={(values: any) => {
+                        if ((values.email ?? '') !== (editingAttendee.email ?? '')) {
+                            requireVerification(() => handleEditAttendee(editingAttendee, values));
+                            return;
+                        }
+                        handleEditAttendee(editingAttendee, values);
+                    }}
+                />
+            )}
+
+            {order && (
+                <EditOrderModal
+                    opened={editOrderModalOpened}
+                    onClose={() => setEditOrderModalOpened(false)}
+                    order={order}
+                    phoneCollection={event?.settings?.phone_collection ?? 'OFF'}
+                    defaultCountry={event?.event_location?.location?.structured_address?.country}
+                    onSuccess={(values: any) => {
+                        if ((values.email ?? '') !== (order.email ?? '')) {
+                            requireVerification(() => handleEditOrder(values));
+                            return;
+                        }
+                        handleEditOrder(values);
+                    }}
+                />
+            )}
+
+            {verificationModal}
+            {transferModals}
+            {resaleModals}
+        </>
+    );
+};
+
+export default OrderSummaryAndProducts;

@@ -1,0 +1,29 @@
+.reader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.readerMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.readerLabel {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.readerMeta {
+  font-size: 12px;
+  color: var(--hi-color-gray-dark);
+}
+
+.empty {
+  font-size: 14px;
+  color: var(--hi-color-gray-dark);
+}
+
+.callout.callout {
+  margin-bottom: 0;
+}

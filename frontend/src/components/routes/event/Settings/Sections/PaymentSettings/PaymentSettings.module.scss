@@ -1,0 +1,16 @@
+.preview {
+  max-width: 480px;
+}
+
+.previewLabel {
+  margin-bottom: 6px;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+}
+
+.previewBody {
+  padding: 14px;
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  font-size: var(--mantine-font-size-sm);
+}

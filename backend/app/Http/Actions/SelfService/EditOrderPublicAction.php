@@ -1,0 +1,57 @@
+<?php
+
+namespace HiEvents\Http\Actions\SelfService;
+
+use HiEvents\Exceptions\SelfServiceDisabledException;
+use HiEvents\Exceptions\SelfServiceVerificationRequiredException;
+use HiEvents\Http\Actions\BaseAction;
+use HiEvents\Http\Request\SelfService\EditOrderPublicRequest;
+use HiEvents\Services\Application\Handlers\SelfService\DTO\EditOrderPublicDTO;
+use HiEvents\Services\Application\Handlers\SelfService\EditOrderPublicHandler;
+use HiEvents\Services\Domain\SelfService\SelfServiceVerificationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+
+class EditOrderPublicAction extends BaseAction
+{
+    public function __construct(
+        private readonly EditOrderPublicHandler $handler
+    ) {}
+
+    public function __invoke(
+        EditOrderPublicRequest $request,
+        int $eventId,
+        string $orderShortId
+    ): JsonResponse {
+        try {
+            $result = $this->handler->handle(EditOrderPublicDTO::from([
+                'eventId' => $eventId,
+                'orderShortId' => $orderShortId,
+                'firstName' => $request->input('first_name'),
+                'lastName' => $request->input('last_name'),
+                'email' => $request->input('email'),
+                'phone' => $request->collectedPhone(),
+                'ipAddress' => $this->getClientIp($request),
+                'userAgent' => $request->userAgent(),
+                'sessionToken' => $request->header(SelfServiceVerificationService::SESSION_HEADER),
+            ]));
+
+            $response = [
+                'message' => __('Order updated successfully'),
+            ];
+
+            if ($result->shortIdChanged && $result->newShortId) {
+                $response['new_short_id'] = $result->newShortId;
+            }
+
+            return $this->jsonResponse($response);
+        } catch (SelfServiceVerificationRequiredException $e) {
+            throw ValidationException::withMessages(['email' => $e->getMessage()]);
+        } catch (SelfServiceDisabledException $e) {
+            return $this->errorResponse($e->getMessage(), $e->getCode());
+        } catch (ResourceNotFoundException $e) {
+            return $this->errorResponse($e->getMessage(), 404);
+        }
+    }
+}

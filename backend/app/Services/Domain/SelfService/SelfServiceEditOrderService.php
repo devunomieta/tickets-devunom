@@ -1,0 +1,238 @@
+<?php
+
+namespace HiEvents\Services\Domain\SelfService;
+
+use HiEvents\DomainObjects\AttendeeDomainObject;
+use HiEvents\DomainObjects\EventDomainObject;
+use HiEvents\DomainObjects\EventLocationDomainObject;
+use HiEvents\DomainObjects\EventOccurrenceDomainObject;
+use HiEvents\DomainObjects\EventSettingDomainObject;
+use HiEvents\DomainObjects\InvoiceDomainObject;
+use HiEvents\DomainObjects\LocationDomainObject;
+use HiEvents\DomainObjects\OrderDomainObject;
+use HiEvents\DomainObjects\OrderItemDomainObject;
+use HiEvents\DomainObjects\OrganizerDomainObject;
+use HiEvents\Helper\IdHelper;
+use HiEvents\Mail\Order\OrderDetailsChangedMail;
+use HiEvents\Repository\Eloquent\Value\Relationship;
+use HiEvents\Repository\Interfaces\EventRepositoryInterface;
+use HiEvents\Repository\Interfaces\OrderRepositoryInterface;
+use HiEvents\Services\Domain\Mail\SendOrderDetailsService;
+use HiEvents\Services\Domain\SelfService\DTO\EditOrderResultDTO;
+use HiEvents\Services\Infrastructure\DomainEvents\DomainEventDispatcherService;
+use HiEvents\Services\Infrastructure\DomainEvents\Enums\DomainEventType;
+use HiEvents\Services\Infrastructure\DomainEvents\Events\OrderEvent;
+use HiEvents\Services\Infrastructure\Phone\PhoneNumberNormalizer;
+use Illuminate\Support\Facades\Mail;
+
+class SelfServiceEditOrderService
+{
+    public function __construct(
+        private readonly OrderRepositoryInterface $orderRepository,
+        private readonly EventRepositoryInterface $eventRepository,
+        private readonly OrderAuditLogService $orderAuditLogService,
+        private readonly SendOrderDetailsService $sendOrderDetailsService,
+        private readonly PhoneNumberNormalizer $phoneNumberNormalizer,
+        private readonly DomainEventDispatcherService $domainEventDispatcherService,
+    ) {}
+
+    public function editOrder(
+        OrderDomainObject $order,
+        ?string $firstName,
+        ?string $lastName,
+        ?string $email,
+        string $ipAddress,
+        ?string $userAgent,
+        ?string $phone = null,
+    ): EditOrderResultDTO {
+        $oldValues = [];
+        $newValues = [];
+        $emailChanged = false;
+        $shortIdChanged = false;
+        $newShortId = null;
+
+        $updateData = [];
+
+        if ($firstName !== null && $firstName !== $order->getFirstName()) {
+            $oldValues['first_name'] = $order->getFirstName();
+            $newValues['first_name'] = $firstName;
+            $updateData['first_name'] = $firstName;
+        }
+
+        if ($lastName !== null && $lastName !== $order->getLastName()) {
+            $oldValues['last_name'] = $order->getLastName();
+            $newValues['last_name'] = $lastName;
+            $updateData['last_name'] = $lastName;
+        }
+
+        if ($email !== null && $email !== $order->getEmail()) {
+            $oldValues['email'] = $order->getEmail();
+            $newValues['email'] = $email;
+            $updateData['email'] = $email;
+            $emailChanged = true;
+
+            if (mb_strtolower(trim($email)) !== mb_strtolower(trim((string) $order->getEmail()))) {
+                $updateData['opted_into_marketing_at'] = null;
+            }
+        }
+
+        $normalizedPhone = $phone === null ? null : $this->phoneNumberNormalizer->toMobileE164($phone);
+
+        if ($phone !== null && $normalizedPhone !== $order->getPhone()) {
+            $oldValues['phone'] = $order->getPhone();
+            $newValues['phone'] = $normalizedPhone;
+            $updateData['phone'] = $normalizedPhone;
+            $updateData['phone_country'] = $this->phoneNumberNormalizer->countryOf($normalizedPhone);
+            $updateData['sms_opted_in_at'] = null;
+        }
+
+        if (! empty($updateData)) {
+            $oldEmail = $order->getEmail();
+
+            if ($emailChanged) {
+                $newShortId = IdHelper::shortId(IdHelper::ORDER_PREFIX);
+                $updateData['short_id'] = $newShortId;
+                $shortIdChanged = true;
+
+            }
+
+            $this->orderRepository->updateWhere(
+                attributes: $updateData,
+                where: ['id' => $order->getId()]
+            );
+
+            $this->domainEventDispatcherService->dispatch(
+                new OrderEvent(
+                    type: DomainEventType::ORDER_UPDATED,
+                    orderId: $order->getId(),
+                ),
+            );
+
+            $event = $this->loadEventWithRelations($order->getEventId());
+
+            if ($emailChanged) {
+                $this->sendConfirmationToNewEmail($order->getId(), $event);
+            }
+
+            if ($oldEmail !== null) {
+                $this->sendChangeNotificationToOldEmail(
+                    oldEmail: $oldEmail,
+                    event: $event,
+                    oldValues: $oldValues,
+                    newValues: $newValues
+                );
+            }
+
+            $this->orderAuditLogService->logOrderUpdate(
+                order: $order,
+                oldValues: $oldValues,
+                newValues: $newValues,
+                ipAddress: $ipAddress,
+                userAgent: $userAgent
+            );
+        }
+
+        return new EditOrderResultDTO(
+            success: true,
+            shortIdChanged: $shortIdChanged,
+            newShortId: $newShortId,
+            emailChanged: $emailChanged
+        );
+    }
+
+    private function loadEventWithRelations(int $eventId): EventDomainObject
+    {
+        return $this->eventRepository
+            ->loadRelation(new Relationship(OrganizerDomainObject::class, name: 'organizer'))
+            ->loadRelation(new Relationship(EventSettingDomainObject::class))
+            ->loadRelation(new Relationship(domainObject: EventOccurrenceDomainObject::class, nested: [
+                new Relationship(domainObject: EventLocationDomainObject::class, name: 'event_location', nested: [
+                    new Relationship(domainObject: LocationDomainObject::class, name: 'location'),
+                ]),
+            ]))
+            ->loadRelation(new Relationship(domainObject: EventLocationDomainObject::class, name: 'event_location', nested: [
+                new Relationship(domainObject: LocationDomainObject::class, name: 'location'),
+            ]))
+            ->findById($eventId);
+    }
+
+    private function sendConfirmationToNewEmail(int $orderId, EventDomainObject $event): void
+    {
+        $order = $this->orderRepository
+            ->loadRelation(new Relationship(
+                domainObject: OrderItemDomainObject::class,
+                nested: [
+                    new Relationship(
+                        domainObject: EventOccurrenceDomainObject::class,
+                        nested: [
+                            new Relationship(domainObject: EventLocationDomainObject::class, name: 'event_location', nested: [
+                                new Relationship(domainObject: LocationDomainObject::class, name: 'location'),
+                            ]),
+                        ],
+                        name: 'event_occurrence',
+                    ),
+                ],
+            ))
+            ->loadRelation(new Relationship(
+                domainObject: AttendeeDomainObject::class,
+                nested: [
+                    new Relationship(
+                        domainObject: EventOccurrenceDomainObject::class,
+                        nested: [
+                            new Relationship(domainObject: EventLocationDomainObject::class, name: 'event_location', nested: [
+                                new Relationship(domainObject: LocationDomainObject::class, name: 'location'),
+                            ]),
+                        ],
+                        name: 'event_occurrence',
+                    ),
+                ],
+            ))
+            ->loadRelation(InvoiceDomainObject::class)
+            ->findById($orderId);
+
+        $this->sendOrderDetailsService->sendCustomerOrderSummary(
+            order: $order,
+            event: $event,
+            organizer: $event->getOrganizer(),
+            eventSettings: $event->getEventSettings(),
+            invoice: $order->getLatestInvoice()
+        );
+    }
+
+    private function sendChangeNotificationToOldEmail(
+        string $oldEmail,
+        EventDomainObject $event,
+        array $oldValues,
+        array $newValues
+    ): void {
+        $changedFields = $this->formatChangedFields($oldValues, $newValues);
+
+        Mail::to($oldEmail)->queue(new OrderDetailsChangedMail(
+            event: $event,
+            organizer: $event->getOrganizer(),
+            eventSettings: $event->getEventSettings(),
+            changedFields: $changedFields
+        ));
+    }
+
+    private function formatChangedFields(array $oldValues, array $newValues): array
+    {
+        $fieldLabels = [
+            'first_name' => __('First Name'),
+            'last_name' => __('Last Name'),
+            'email' => __('Email'),
+            'phone' => __('Mobile number'),
+        ];
+
+        $changedFields = [];
+        foreach ($oldValues as $field => $oldValue) {
+            $label = $fieldLabels[$field] ?? $field;
+            $changedFields[$label] = [
+                'old' => $oldValue,
+                'new' => $newValues[$field] ?? '',
+            ];
+        }
+
+        return $changedFields;
+    }
+}

@@ -1,0 +1,127 @@
+@use "../auth/auth-common" as auth;
+@use "../../../styles/mixins.scss";
+
+.header {
+  @include auth.auth-header;
+
+  .step {
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--hi-color-text-muted);
+  }
+
+  .email {
+    display: block;
+    font-weight: 600;
+    color: var(--hi-text);
+  }
+}
+
+.form {
+  @include auth.auth-inputs;
+  @include auth.auth-button(0.5rem);
+
+  :global(.mantine-InputWrapper-root) {
+    margin-bottom: 1rem;
+  }
+
+  :global(.mantine-Switch-root) {
+    margin-bottom: 1rem;
+  }
+
+  :global(.mantine-DateTimePicker-input) {
+    border-radius: var(--hi-radius-lg);
+    border: 1px solid var(--hi-color-gray-2);
+    min-height: 46px;
+    padding: 0.6875rem 0.875rem;
+    font-size: 0.9375rem;
+    background: var(--hi-color-white);
+    cursor: pointer;
+
+    @include mixins.respond-below(sm) {
+      font-size: 1rem;
+    }
+  }
+}
+
+.pinInput {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1.25rem;
+
+  :global(.mantine-PinInput-input) {
+    border-radius: var(--hi-radius-lg);
+    border: 1px solid var(--hi-color-gray-2);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--hi-text);
+    background: var(--hi-color-white);
+
+    &:focus {
+      border-color: var(--mantine-color-secondary-5);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-color-secondary-5) 12%, transparent);
+    }
+  }
+}
+
+.note {
+  margin: 1rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--hi-color-text-muted);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.linkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--mantine-color-secondary-5);
+  cursor: pointer;
+  min-height: 24px;
+
+  &:hover:not(:disabled) {
+    color: var(--mantine-color-secondary-7);
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    color: var(--hi-color-text-tertiary);
+    cursor: default;
+  }
+}
+
+.regional {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: var(--hi-color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.regionalFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+
+  @include mixins.respond-below(sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.error {
+  margin-bottom: 1rem;
+}

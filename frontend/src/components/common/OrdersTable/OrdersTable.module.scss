@@ -1,0 +1,52 @@
+.emailTarget {
+  display: inline-flex;
+  max-width: 100%;
+
+  button {
+    color: inherit;
+  }
+}
+
+.company {
+  flex-shrink: 9999;
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-gray-6);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.amount {
+  font-weight: 600;
+  color: var(--mantine-color-gray-9);
+}
+
+.items {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.more {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-gray-1);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+  color: var(--mantine-color-gray-7);
+}
+
+.payment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

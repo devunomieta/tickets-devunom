@@ -1,0 +1,200 @@
+@use "../../../../styles/mixins";
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-md);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 24px;
+  background: var(--mantine-color-gray-2);
+  flex-shrink: 0;
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+.dateTimeLink {
+  display: flex;
+  flex-direction: column;
+  max-width: 280px;
+  line-height: 1.35;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover .dateTimePrimary {
+    text-decoration: underline;
+  }
+}
+
+.dateTimePrimary {
+  display: flex;
+  align-items: center;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  color: var(--mantine-color-gray-9);
+}
+
+.dateTimeSecondary {
+  overflow: hidden;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-gray-6);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .dateTimeLocation::before {
+    content: ' · ';
+  }
+
+  .dateTimeLocation:first-child::before {
+    content: none;
+  }
+
+  &:empty {
+    display: none;
+  }
+}
+
+.dateTimeMeta {
+  color: inherit;
+}
+
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--mantine-radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+
+  &[data-status="ACTIVE"] {
+    background: var(--mantine-color-green-1);
+    color: var(--mantine-color-green-9);
+  }
+
+  &[data-status="CANCELLED"] {
+    background: var(--mantine-color-red-1);
+    color: var(--mantine-color-red-9);
+  }
+
+  &[data-status="SOLD_OUT"] {
+    background: var(--mantine-color-orange-1);
+    color: var(--mantine-color-orange-9);
+  }
+
+  &[data-clickable] {
+    cursor: pointer;
+
+    &:hover {
+      filter: brightness(0.95);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+  }
+}
+
+.editedIcon {
+  color: var(--mantine-color-dimmed);
+  margin-left: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.ticketsSold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticketsSoldNumbers {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.ticketsSoldCount {
+  font-weight: 600;
+  color: var(--mantine-color-text);
+}
+
+.ticketsSoldTotal {
+  color: var(--mantine-color-dimmed);
+}
+
+.ticketsProgress {
+  width: 64px;
+}
+
+.activity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activityText {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mantine-color-text);
+}
+
+.activityRefunded {
+  font-size: 11px;
+  color: var(--mantine-color-red-6);
+}
+
+
+.emptyState {
+  padding: 60px 24px;
+  text-align: center;
+  border-style: dashed;
+}
+
+.contentArea {
+  min-height: 720px;
+}
+
+.generationBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--mantine-color-blue-2);
+  border-radius: 8px;
+  background: var(--mantine-color-blue-0);
+}
+
+.countText {
+  font-size: 13px;
+  color: var(--mantine-color-dimmed);
+  padding: 12px 4px 0;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .toolbarDivider {
+    display: none;
+  }
+
+  .toolbarSpacer {
+    display: none;
+  }
+
+}

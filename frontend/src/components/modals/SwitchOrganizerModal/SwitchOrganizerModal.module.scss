@@ -1,0 +1,138 @@
+@use "../../../styles/mixins.scss";
+
+$row-inset: 8px;
+
+.search {
+  margin-bottom: 8px;
+
+  :global(.mantine-InputWrapper-root) {
+    margin-bottom: 0;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: min(408px, 55vh);
+  margin-inline: -$row-inset;
+  overflow-y: auto;
+
+  @include mixins.respond-below(sm) {
+    max-height: none;
+  }
+}
+
+.row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px $row-inset;
+  border-radius: 8px;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--mantine-color-gray-1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mantine-color-primary-5);
+    outline-offset: -2px;
+  }
+
+  &[data-archived] {
+    :global(.mantine-Avatar-root) {
+      opacity: 0.55;
+    }
+
+    .name {
+      font-weight: 500;
+      color: var(--mantine-color-gray-6);
+    }
+  }
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  color: var(--mantine-color-gray-9);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentIcon {
+  flex-shrink: 0;
+  color: var(--mantine-color-primary-6);
+}
+
+.archivedLabel {
+  flex-shrink: 0;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-gray-6);
+}
+
+.archivedToggle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-top: 4px;
+  padding: 0 $row-inset;
+  border-radius: 8px;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  color: var(--mantine-color-gray-6);
+
+  &:hover {
+    color: var(--mantine-color-gray-8);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mantine-color-primary-5);
+    outline-offset: -2px;
+  }
+}
+
+.archivedCount {
+  font-weight: 500;
+  color: var(--mantine-color-gray-5);
+}
+
+.empty {
+  margin: 0;
+  padding: 20px $row-inset;
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-gray-6);
+  text-align: center;
+}
+
+.footer {
+  margin: 8px (-$row-inset) (-$row-inset);
+  padding-top: 8px;
+  border-top: 1px solid var(--hi-color-border);
+}
+
+.createIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px dashed var(--mantine-color-gray-4);
+  border-radius: 8px;
+  color: var(--mantine-color-gray-6);
+}
+
+.createLabel {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  color: var(--mantine-color-gray-7);
+}
