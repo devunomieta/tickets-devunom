@@ -5,7 +5,8 @@ import {CheckoutStepTitle} from "../../../layouts/Checkout/CheckoutStepTitle";
 import {StripePaymentMethod} from "./PaymentMethods/Stripe";
 import {OfflinePaymentMethod} from "./PaymentMethods/Offline";
 import {Button, Group, Text} from "@mantine/core";
-import {IconBuildingBank, IconLock, IconWallet} from "@tabler/icons-react";
+import {IconBuildingBank, IconCreditCard, IconLock, IconWallet} from "@tabler/icons-react";
+import {externalPaymentClient, EventExternalGateways} from "../../../../api/externalPayment.client.ts";
 import {formatCurrency} from "../../../../utilites/currency.ts";
 import {t, Trans} from "@lingui/macro";
 import {useGetOrderPublic} from "../../../../queries/useGetOrderPublic.ts";
@@ -34,7 +35,8 @@ const Payment = () => {
     const isLoading = !isOrderFetched;
     const checkoutEvent = order?.event;
     const [isPaymentLoading, setIsPaymentLoading] = useState(false);
-    const [activePaymentMethod, setActivePaymentMethod] = useState<'STRIPE' | 'OFFLINE' | null>(null);
+    const [activePaymentMethod, setActivePaymentMethod] = useState<'STRIPE' | 'OFFLINE' | 'PAYSTACK' | 'BACHS' | null>(null);
+    const [externalGateways, setExternalGateways] = useState<EventExternalGateways | null>(null);
     const [submitHandler, setSubmitHandler] = useState<(() => Promise<void>) | null>(null);
     const transitionOrderToOfflinePaymentMutation = useTransitionOrderToOfflinePaymentPublic();
     const paymentLinkModal = usePaymentLinkModal();
@@ -49,19 +51,33 @@ const Payment = () => {
         && !!checkoutEvent?.settings?.payment_providers?.includes('OFFLINE')
         && !!checkoutEvent?.settings?.payment_providers?.includes('STRIPE');
 
+    React.useEffect(() => {
+        if (!eventId) return;
+        externalPaymentClient.getEventGateways(eventId)
+            .then(setExternalGateways)
+            .catch(() => setExternalGateways({paystack: {enabled: false, mode: 'test'}, bachs: {enabled: false, mode: 'test'}}));
+    }, [eventId]);
+
     const isStripeEnabled = checkoutEvent?.settings?.payment_providers?.includes('STRIPE');
     const isOfflineEnabled = !mustPayByCardNow && checkoutEvent?.settings?.payment_providers?.includes('OFFLINE');
+    const isPaystackEnabled = !!externalGateways?.paystack?.enabled;
+    const isBachsEnabled = !!externalGateways?.bachs?.enabled;
+    const enabledMethodCount = [isStripeEnabled, isPaystackEnabled, isBachsEnabled, isOfflineEnabled].filter(Boolean).length;
     const isPayingLater = activePaymentMethod === 'OFFLINE';
 
     React.useEffect(() => {
         if (isStripeEnabled) {
             setActivePaymentMethod('STRIPE');
+        } else if (isPaystackEnabled) {
+            setActivePaymentMethod('PAYSTACK');
+        } else if (isBachsEnabled) {
+            setActivePaymentMethod('BACHS');
         } else if (isOfflineEnabled) {
             setActivePaymentMethod('OFFLINE');
         } else {
             setActivePaymentMethod(null);
         }
-    }, [isStripeEnabled, isOfflineEnabled]);
+    }, [isStripeEnabled, isPaystackEnabled, isBachsEnabled, isOfflineEnabled]);
 
     React.useEffect(() => {
         window?.scrollTo(0, 0);
@@ -83,6 +99,34 @@ const Payment = () => {
     const handleSubmit = async () => {
         if (activePaymentMethod === 'STRIPE') {
             handleParentSubmit();
+        } else if (activePaymentMethod === 'PAYSTACK' && eventId && orderShortId) {
+            setIsPaymentLoading(true);
+            try {
+                const session = await externalPaymentClient.createPaystackCheckout(eventId, orderShortId);
+                if (session.authorization_url) {
+                    window.location.href = session.authorization_url;
+                } else {
+                    setIsPaymentLoading(false);
+                    showError('Could not get Paystack checkout URL.');
+                }
+            } catch (error: any) {
+                setIsPaymentLoading(false);
+                showError(error?.response?.data?.message || 'Paystack payment initialization failed.');
+            }
+        } else if (activePaymentMethod === 'BACHS' && eventId && orderShortId) {
+            setIsPaymentLoading(true);
+            try {
+                const session = await externalPaymentClient.createBachsCheckout(eventId, orderShortId);
+                if (session.checkout_url) {
+                    window.location.href = session.checkout_url;
+                } else {
+                    setIsPaymentLoading(false);
+                    showError('Could not get Bachs.io checkout URL.');
+                }
+            } catch (error: any) {
+                setIsPaymentLoading(false);
+                showError(error?.response?.data?.message || 'Bachs.io payment initialization failed.');
+            }
         } else if (activePaymentMethod === 'OFFLINE') {
             setIsPaymentLoading(true);
 
@@ -103,7 +147,7 @@ const Payment = () => {
         }
     };
 
-    if (!isStripeEnabled && !isOfflineEnabled && isOrderFetched) {
+    if (!isStripeEnabled && !isOfflineEnabled && !isPaystackEnabled && !isBachsEnabled && isOrderFetched) {
         return (
             <CheckoutContent>
                 <Card>
@@ -131,30 +175,70 @@ const Payment = () => {
                 {(checkoutEvent && order) && (
                     <InlineOrderSummary event={checkoutEvent} order={order} defaultExpanded={isPaymentLinkPayer}/>
                 )}
-                {(isStripeEnabled && isOfflineEnabled) && (
+                {(enabledMethodCount > 1) && (
                     <div className={classes.paymentMethodSelector}>
                         <Text size="sm" c="dimmed" className={classes.paymentMethodLabel}>
                             {t`Payment method`}
                         </Text>
                         <div className={classes.paymentMethodTabs}>
-                            <button
-                                type="button"
-                                className={`${classes.paymentMethodTab} ${activePaymentMethod === 'STRIPE' ? classes.active : ''}`}
-                                onClick={() => setActivePaymentMethod('STRIPE')}
-                            >
-                                <IconWallet size={18}/>
-                                <span>{t`Pay now`}</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`${classes.paymentMethodTab} ${activePaymentMethod === 'OFFLINE' ? classes.active : ''}`}
-                                onClick={() => setActivePaymentMethod('OFFLINE')}
-                            >
-                                <IconBuildingBank size={18}/>
-                                <span>{t`Pay later`}</span>
-                            </button>
+                            {isStripeEnabled && (
+                                <button
+                                    type="button"
+                                    className={`${classes.paymentMethodTab} ${activePaymentMethod === 'STRIPE' ? classes.active : ''}`}
+                                    onClick={() => setActivePaymentMethod('STRIPE')}
+                                >
+                                    <IconWallet size={18}/>
+                                    <span>{t`Card (Stripe)`}</span>
+                                </button>
+                            )}
+                            {isPaystackEnabled && (
+                                <button
+                                    type="button"
+                                    className={`${classes.paymentMethodTab} ${activePaymentMethod === 'PAYSTACK' ? classes.active : ''}`}
+                                    onClick={() => setActivePaymentMethod('PAYSTACK')}
+                                >
+                                    <IconCreditCard size={18}/>
+                                    <span>Paystack</span>
+                                </button>
+                            )}
+                            {isBachsEnabled && (
+                                <button
+                                    type="button"
+                                    className={`${classes.paymentMethodTab} ${activePaymentMethod === 'BACHS' ? classes.active : ''}`}
+                                    onClick={() => setActivePaymentMethod('BACHS')}
+                                >
+                                    <IconCreditCard size={18}/>
+                                    <span>Bachs.io</span>
+                                </button>
+                            )}
+                            {isOfflineEnabled && (
+                                <button
+                                    type="button"
+                                    className={`${classes.paymentMethodTab} ${activePaymentMethod === 'OFFLINE' ? classes.active : ''}`}
+                                    onClick={() => setActivePaymentMethod('OFFLINE')}
+                                >
+                                    <IconBuildingBank size={18}/>
+                                    <span>{t`Pay later`}</span>
+                                </button>
+                            )}
                         </div>
                     </div>
+                )}
+
+                {isPaystackEnabled && activePaymentMethod === 'PAYSTACK' && (
+                    <Card>
+                        <Text size="sm">
+                            You will be redirected to <strong>Paystack</strong> to complete your payment securely via Card, Bank Transfer, USSD, or Mobile Money.
+                        </Text>
+                    </Card>
+                )}
+
+                {isBachsEnabled && activePaymentMethod === 'BACHS' && (
+                    <Card>
+                        <Text size="sm">
+                            You will be redirected to <strong>Bachs.io</strong> to complete your payment securely via Card, Bank Transfer, Mobile Money, or Stablecoins.
+                        </Text>
+                    </Card>
                 )}
 
                 {(mustPayByCardNow && isStripeEnabled) && (

@@ -8,4 +8,6 @@ enum PaymentProviders: string
 
     case STRIPE = 'STRIPE';
     case OFFLINE = 'OFFLINE';
+    case PAYSTACK = 'PAYSTACK';
+    case BACHS = 'BACHS';
 }

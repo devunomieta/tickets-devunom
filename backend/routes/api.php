@@ -642,6 +642,8 @@ $router->middleware(['auth:api'])->group(
         $router->put('/accounts/{account_id}/sso/enforcement', UpdateSsoEnforcementAction::class)->whereNumber('account_id');
         $router->put('/accounts/{account_id}/sso/members/{account_user_id}', UpdateSsoMemberEnforcementAction::class)->whereNumber(['account_id', 'account_user_id']);
         $router->put('/accounts/{account_id?}', UpdateAccountAction::class)->whereNumber('account_id');
+        $router->get('/accounts/{account_id}/payment-gateways', \HiEvents\Http\Actions\Accounts\GetAccountPaymentGatewaysAction::class)->whereNumber('account_id');
+        $router->put('/accounts/{account_id}/payment-gateways/{provider}', \HiEvents\Http\Actions\Accounts\UpdateAccountPaymentGatewayAction::class)->whereNumber('account_id');
         $router->get('/accounts/{account_id}/subscription', GetAccountSubscriptionAction::class)->whereNumber('account_id')->middleware('throttle:60,1,account-subscription');
         $router->post('/accounts/{account_id}/subscription/checkout-session', CreateSubscriptionCheckoutSessionAction::class)->whereNumber('account_id')->middleware('throttle:10,1,account-subscription-checkout');
         $router->post('/accounts/{account_id}/subscription/portal-session', CreateSubscriptionPortalSessionAction::class)->whereNumber('account_id')->middleware('throttle:20,1,account-subscription-portal');
@@ -1219,11 +1221,21 @@ $router->prefix('/public')->group(
             ->middleware('throttle:public-payment-intent');
         $router->get('/events/{event_id}/order/{order_short_id}/stripe/payment_intent', GetPaymentIntentActionPublic::class);
 
+        // External payment gateways (Paystack & Bachs.io)
+        $router->get('/events/{event_id}/payment-gateways', \HiEvents\Http\Actions\Orders\Payment\External\GetEventPaymentGatewaysActionPublic::class);
+        $router->post('/events/{event_id}/order/{order_short_id}/paystack/checkout', \HiEvents\Http\Actions\Orders\Payment\External\CreatePaystackCheckoutActionPublic::class);
+        $router->get('/events/{event_id}/order/{order_short_id}/paystack/verify', \HiEvents\Http\Actions\Orders\Payment\External\VerifyPaystackPaymentActionPublic::class);
+        $router->post('/events/{event_id}/order/{order_short_id}/bachs/checkout', \HiEvents\Http\Actions\Orders\Payment\External\CreateBachsCheckoutActionPublic::class);
+
         // Questions
         $router->get('/events/{event_id}/questions', GetQuestionsPublicAction::class);
 
         // Webhooks
         $router->post('/webhooks/stripe', StripeIncomingWebhookAction::class)
+            ->withoutMiddleware(ThrottleRequests::class.':api');
+        $router->post('/webhooks/paystack', \HiEvents\Http\Actions\Common\Webhooks\PaystackIncomingWebhookAction::class)
+            ->withoutMiddleware(ThrottleRequests::class.':api');
+        $router->post('/webhooks/bachs', \HiEvents\Http\Actions\Common\Webhooks\BachsIncomingWebhookAction::class)
             ->withoutMiddleware(ThrottleRequests::class.':api');
         $router->post('/webhooks/email-delivery/{provider}', HandleEmailDeliveryWebhookPublicAction::class)
             ->withoutMiddleware(ThrottleRequests::class.':api');
