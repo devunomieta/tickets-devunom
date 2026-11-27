@@ -28,9 +28,31 @@
     <!--render-helmet--><title>Hi.Events</title><!--/render-helmet-->
     <!--environment-variables-->
     <!--head-snippets-->
+    <style>
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        z-index: 9999;
+      }
+      #initial-loader .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #f0e6f5;
+        border-top-color: #cd58dd;
+        border-radius: 50%;
+        animation: initial-spin 0.7s linear infinite;
+      }
+      @keyframes initial-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body >
-    <div id="app"><!--app-html--></div>
+    <div id="app"><!--app-html--><div id="initial-loader" aria-label="Loading"><div class="spinner"></div></div></div>
     <script type="module" src="/src/entry.client.tsx"></script>
     <!--dehydrated-state-->
   </body>
