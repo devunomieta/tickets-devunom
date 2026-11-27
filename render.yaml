@@ -24,6 +24,8 @@ services:
         value: https://tickets.cortdevs.com
       - key: APP_CDN_URL
         value: https://media.cortdevs.com
+      - key: APP_SAAS_MODE_ENABLED
+        value: "true"
       - key: APP_TRUSTED_PROXIES
         value: "*"
       - key: APP_KEY
