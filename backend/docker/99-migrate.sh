@@ -9,6 +9,6 @@ fi
 if [ "${SEED_DEMO}" = "true" ]; then
     echo "Seeding Hi.Events demo events..."
     php /var/www/html/artisan demo:seed --confirm \
-        --email="${DEMO_EMAIL:-demo@devunomieta.xyz}" \
+        --email="${DEMO_EMAIL:-demo@cortdevs.com}" \
         --password="${DEMO_PASSWORD:-DemoPass123!}" || true
 fi
