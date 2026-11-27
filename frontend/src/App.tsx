@@ -42,36 +42,6 @@ export const App: FC<
 
     return (
         <React.StrictMode>
-            {!props.ssrStyled && <div
-                className="ssr-loader"
-                style={{
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    margin: 0,
-                    padding: 0,
-                    width: "100vw",
-                    height: "100vh",
-                    position: "fixed",
-                    background: "#ffffff",
-                    zIndex: 1000,
-                    display: isLoadedOnBrowser ? "none" : "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <div
-                    style={{
-                        width: 36,
-                        height: 36,
-                        border: "3px solid #f0e6f5",
-                        borderTopColor: "#cd58dd",
-                        borderRadius: "50%",
-                        animation: "initial-spin 0.7s linear infinite",
-                    }}
-                />
-            </div>}
             <MantineProvider
                 cssVariablesResolver={v8CssVariablesResolver}
                 theme={{
