@@ -30,6 +30,9 @@ class EnsureSuperAdminCommand extends Command
             return self::SUCCESS;
         }
 
+        // Never block bootstrap on outbound SMTP
+        config(['mail.default' => 'log']);
+
         $user = User::query()->where('email', $email)->first();
 
         if (! $user) {
