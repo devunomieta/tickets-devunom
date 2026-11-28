@@ -252,6 +252,13 @@ const routes: RouteObject[] = [
                 }
             },
             {
+                path: "branding",
+                async lazy() {
+                    const Branding = await import("./components/routes/admin/Branding");
+                    return { Component: Branding.default };
+                }
+            },
+            {
                 path: "payment-gateways",
                 async lazy() {
                     const PaymentGateways = await import("./components/routes/admin/PaymentGateways");

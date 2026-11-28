@@ -1,4 +1,4 @@
-import {IconUsers, IconBuildingBank, IconLayoutDashboard, IconCalendar, IconReceipt, IconSettings, IconChartBar, IconAlertTriangle, IconFlag, IconMail, IconMailHeart, IconSpeakerphone, IconTrash, IconToggleRight, IconCreditCard, IconMailCheck, IconMailForward} from "@tabler/icons-react";
+import {IconUsers, IconBuildingBank, IconLayoutDashboard, IconCalendar, IconReceipt, IconSettings, IconChartBar, IconAlertTriangle, IconFlag, IconMail, IconMailHeart, IconSpeakerphone, IconTrash, IconToggleRight, IconCreditCard, IconPalette, IconMailCheck, IconMailForward} from "@tabler/icons-react";
 import {t} from "@lingui/macro";
 import {NavItem, BreadcrumbItem} from "../AppLayout/types";
 import AppLayout from "../AppLayout";
@@ -37,6 +37,7 @@ const AdminLayout = () => {
         {link: 'email-delivery', label: t`Email Delivery`, icon: IconMailCheck},
         {link: 'failed-jobs', label: t`Failed Jobs`, icon: IconAlertTriangle},
         {link: 'configurations', label: t`Configurations`, icon: IconSettings},
+        {link: 'branding', label: t`Site Branding`, icon: IconPalette},
         {link: 'payment-gateways', label: t`Payment Gateways`, icon: IconCreditCard},
         {link: 'feature-flags', label: t`Feature Flags`, icon: IconToggleRight, showWhen: () => !!featureFlags?.data?.length},
     ];

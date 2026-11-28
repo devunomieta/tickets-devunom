@@ -1,9 +1,16 @@
 import {useGetMe} from "./queries/useGetMe.ts";
 import {useEffect} from "react";
 import {dynamicActivateLocale, getClientLocale} from "./locales.ts";
+import {applyBrandingToDom, brandingClient} from "./api/branding.client.ts";
 
 export const StartupChecks = () => {
     const meQuery = useGetMe();
+
+    useEffect(() => {
+        brandingClient.getBranding()
+            .then(applyBrandingToDom)
+            .catch(() => {});
+    }, []);
 
     const setLocaleForLoggedInUser = () => {
         const cookieLocale = getClientLocale();
