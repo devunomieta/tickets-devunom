@@ -1231,10 +1231,6 @@ $router->prefix('/public')->group(
         $router->get('/events/{event_id}/questions', GetQuestionsPublicAction::class);
 
         // Webhooks
-        $router->get('/auth/google/status', \HiEvents\Http\Actions\Auth\GoogleSignInStatusAction::class);
-        $router->get('/auth/google/redirect', \HiEvents\Http\Actions\Auth\GoogleSignInRedirectAction::class);
-        $router->get('/auth/google/callback', \HiEvents\Http\Actions\Auth\GoogleSignInCallbackAction::class);
-
         $router->post('/webhooks/stripe', StripeIncomingWebhookAction::class)
             ->withoutMiddleware(ThrottleRequests::class.':api');
         $router->post('/webhooks/paystack', \HiEvents\Http\Actions\Common\Webhooks\PaystackIncomingWebhookAction::class)

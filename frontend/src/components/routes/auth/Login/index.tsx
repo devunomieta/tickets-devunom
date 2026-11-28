@@ -28,7 +28,6 @@ const Login = () => {
     });
     const [ticketLookupOpen, setTicketLookupOpen] = useState(false);
     const [ssoCancelled, setSsoCancelled] = useState(false);
-    const [googleEnabled, setGoogleEnabled] = useState(false);
     const [notice, setNotice] = useState<string | null>((location.state as { notice?: string } | null)?.notice ?? null);
     const [ssoRequiredEmail, setSsoRequiredEmail] = useState<string | null>(null);
     const steps = useLoginSteps({
@@ -74,26 +73,6 @@ const Login = () => {
             params.delete('sso_cancelled');
             const query = params.toString();
             window.history.replaceState(window.history.state, '', location.pathname + (query ? `?${query}` : ''));
-        }
-
-        if (params.has('google_error')) {
-            const code = params.get('google_error');
-            if (code === 'no_account') {
-                steps.setError(t`No account exists for this Google email. Please sign up first or contact an administrator.`);
-            } else if (code !== 'cancelled') {
-                steps.setError(t`Google sign-in failed. Please try again.`);
-            }
-            params.delete('google_error');
-            const query = params.toString();
-            window.history.replaceState(window.history.state, '', location.pathname + (query ? `?${query}` : ''));
-        }
-
-        const apiBase = String(getConfig('VITE_API_URL_CLIENT', '')).replace(/\/$/, '');
-        if (apiBase) {
-            fetch(`${apiBase}/public/auth/google/status`)
-                .then((r) => r.json())
-                .then((data) => setGoogleEnabled(!!data?.enabled))
-                .catch(() => setGoogleEnabled(false));
         }
     }, []);
 
@@ -226,17 +205,6 @@ const Login = () => {
                         <Button color="secondary.5" type="submit" fullWidth loading={isPending} disabled={isPending} mt="lg">
                             {isPending ? t`Signing in` : t`Sign in`}
                         </Button>
-                        {googleEnabled && (
-                            <Button
-                                component="a"
-                                href={`${String(getConfig('VITE_API_URL_CLIENT', '')).replace(/\/$/, '')}/public/auth/google/redirect`}
-                                variant="default"
-                                fullWidth
-                                mt="sm"
-                            >
-                                Sign in with Google
-                            </Button>
-                        )}
                     </form>
                 </div>
             )}
