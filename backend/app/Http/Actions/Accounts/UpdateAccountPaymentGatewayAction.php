@@ -16,7 +16,7 @@ class UpdateAccountPaymentGatewayAction extends BaseAction
 {
     public function __invoke(Request $request, int $accountId, string $provider): JsonResponse
     {
-        $this->isActionAuthorized($accountId, AccountDomainObject::class, Role::ADMIN);
+        $this->isActionAuthorized($accountId, AccountDomainObject::class, Role::SUPERADMIN);
 
         $provider = strtolower($provider);
         if (! in_array($provider, [

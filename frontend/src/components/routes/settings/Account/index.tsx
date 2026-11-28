@@ -17,7 +17,6 @@ import {
     SettingsSection,
 } from "../../../common/SettingsPage";
 import {DeleteAccountSection} from "./DeleteAccountSection.tsx";
-import {PaymentGatewaysSection} from "./PaymentGatewaysSection.tsx";
 import {SingleSignOnSection} from "../../../../ee/sso/components/SingleSignOn";
 import {useLicensedFeature} from "../../../../ee/licensing/hooks/useLicensedFeature.ts";
 import {FeatureFlag} from "../../../../constants/featureFlags.ts";
@@ -126,10 +125,6 @@ const AccountSettings = () => {
 
             {canManageAccount && enterpriseSso.isVisible && account?.id && !isPendingDeletion && (
                 <SingleSignOnSection accountId={account.id} setupLocked={enterpriseSso.isSetupLocked}/>
-            )}
-
-            {canManageAccount && account?.id && (
-                <PaymentGatewaysSection accountId={account.id} isReadOnly={isReadOnly}/>
             )}
 
             {canManageAccount && <DeleteAccountSection/>}

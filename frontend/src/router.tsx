@@ -252,10 +252,10 @@ const routes: RouteObject[] = [
                 }
             },
             {
-                path: "licence",
+                path: "payment-gateways",
                 async lazy() {
-                    const Licence = await import("./ee/licensing/components/routes/admin/Licence");
-                    return { Component: Licence.default };
+                    const PaymentGateways = await import("./components/routes/admin/PaymentGateways");
+                    return { Component: PaymentGateways.default };
                 }
             },
             {

@@ -14,7 +14,7 @@ class GetAccountPaymentGatewaysAction extends BaseAction
 {
     public function __invoke(int $accountId): JsonResponse
     {
-        $this->isActionAuthorized($accountId, AccountDomainObject::class, Role::ADMIN);
+        $this->isActionAuthorized($accountId, AccountDomainObject::class, Role::SUPERADMIN);
 
         $existing = AccountPaymentGateway::query()
             ->where('account_id', $accountId)

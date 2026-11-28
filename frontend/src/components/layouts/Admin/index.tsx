@@ -1,4 +1,4 @@
-import {IconUsers, IconBuildingBank, IconLayoutDashboard, IconCalendar, IconReceipt, IconSettings, IconChartBar, IconAlertTriangle, IconFlag, IconMail, IconMailHeart, IconSpeakerphone, IconTrash, IconToggleRight, IconLicense, IconMailCheck, IconMailForward} from "@tabler/icons-react";
+import {IconUsers, IconBuildingBank, IconLayoutDashboard, IconCalendar, IconReceipt, IconSettings, IconChartBar, IconAlertTriangle, IconFlag, IconMail, IconMailHeart, IconSpeakerphone, IconTrash, IconToggleRight, IconCreditCard, IconMailCheck, IconMailForward} from "@tabler/icons-react";
 import {t} from "@lingui/macro";
 import {NavItem, BreadcrumbItem} from "../AppLayout/types";
 import AppLayout from "../AppLayout";
@@ -37,8 +37,8 @@ const AdminLayout = () => {
         {link: 'email-delivery', label: t`Email Delivery`, icon: IconMailCheck},
         {link: 'failed-jobs', label: t`Failed Jobs`, icon: IconAlertTriangle},
         {link: 'configurations', label: t`Configurations`, icon: IconSettings},
+        {link: 'payment-gateways', label: t`Payment Gateways`, icon: IconCreditCard},
         {link: 'feature-flags', label: t`Feature Flags`, icon: IconToggleRight, showWhen: () => !!featureFlags?.data?.length},
-        {link: 'licence', label: t`Licence`, icon: IconLicense},
     ];
 
     const breadcrumbItems: BreadcrumbItem[] = [

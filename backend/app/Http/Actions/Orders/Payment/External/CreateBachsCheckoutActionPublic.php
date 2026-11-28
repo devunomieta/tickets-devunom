@@ -35,6 +35,13 @@ class CreateBachsCheckoutActionPublic extends BaseAction
             ->first();
 
         if (! $gateway || ! $gateway->isConfigured()) {
+            $gateway = AccountPaymentGateway::query()
+                ->where('provider', AccountPaymentGateway::PROVIDER_BACHS)
+                ->where('is_enabled', true)
+                ->first();
+        }
+
+        if (! $gateway || ! $gateway->isConfigured()) {
             return $this->errorResponse('Bachs.io is not enabled for this event.', Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

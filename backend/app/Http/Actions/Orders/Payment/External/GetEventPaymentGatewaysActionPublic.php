@@ -28,8 +28,22 @@ class GetEventPaymentGatewaysActionPublic extends BaseAction
             ->get()
             ->keyBy('provider');
 
+        // Fall back to platform-level (Super Admin) configured gateways in SaaS mode
         $paystack = $gateways->get(AccountPaymentGateway::PROVIDER_PAYSTACK);
+        if (! $paystack || ! $paystack->isConfigured()) {
+            $paystack = AccountPaymentGateway::query()
+                ->where('provider', AccountPaymentGateway::PROVIDER_PAYSTACK)
+                ->where('is_enabled', true)
+                ->first();
+        }
+
         $bachs = $gateways->get(AccountPaymentGateway::PROVIDER_BACHS);
+        if (! $bachs || ! $bachs->isConfigured()) {
+            $bachs = AccountPaymentGateway::query()
+                ->where('provider', AccountPaymentGateway::PROVIDER_BACHS)
+                ->where('is_enabled', true)
+                ->first();
+        }
 
         return $this->jsonResponse([
             'data' => [
