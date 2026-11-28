@@ -48,6 +48,10 @@ export const DeleteAccountSection = () => {
         return null;
     }
 
+    if (me?.role === 'ADMIN' || me?.role === 'SUPERADMIN') {
+        return null;
+    }
+
     const pendingRequest = deletionStatus.deletion_request;
     const isOwner = !!me?.is_account_owner;
     const confirmationMatches = form.values.confirmation.trim().toLowerCase() === account.name.trim().toLowerCase();

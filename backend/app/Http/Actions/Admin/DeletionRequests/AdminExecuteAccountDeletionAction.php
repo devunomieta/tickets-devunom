@@ -23,6 +23,13 @@ class AdminExecuteAccountDeletionAction extends BaseAction
 
         $deletionRequest = $this->deletionRequestRepository->findById($deletionRequestId);
 
+        if ($deletionRequest->getAccountId() === $this->getAuthenticatedAccountId()) {
+            return $this->errorResponse(
+                message: __('Super Admins cannot delete their own account.'),
+                statusCode: HttpResponse::HTTP_FORBIDDEN,
+            );
+        }
+
         if ($deletionRequest->getStatus() !== AccountDeletionRequestStatus::REQUESTED->name) {
             return $this->errorResponse(
                 message: __('Only pending deletion requests can be executed.'),

@@ -30,6 +30,14 @@ class RequestAccountDeletionAction extends BaseAction
     public function __invoke(RequestAccountDeletionRequest $request): JsonResponse
     {
         $user = $this->getAuthenticatedUser();
+        $role = $user->getCurrentAccountUser()?->getRole();
+
+        if (in_array($role, [\HiEvents\DomainObjects\Enums\Role::ADMIN->name, \HiEvents\DomainObjects\Enums\Role::SUPERADMIN->name], true)) {
+            return $this->errorResponse(
+                message: __('Administrators and Super Admins cannot delete their own account. Only a Super Admin can delete an Admin account.'),
+                statusCode: HttpResponse::HTTP_FORBIDDEN,
+            );
+        }
 
         if (! $user->getCurrentAccountUser()?->getIsAccountOwner()) {
             return $this->errorResponse(
