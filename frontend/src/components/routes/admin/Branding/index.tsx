@@ -108,21 +108,6 @@ const AdminBranding = () => {
                         required
                     />
 
-                    <Group justify="space-between" align="center">
-                        <div>
-                            <Text size="sm" fw={500}>Sitewide Theme Mode</Text>
-                            <Text size="xs" c="dimmed">Switch between Dark and Light layout across the platform.</Text>
-                        </div>
-                        <SegmentedControl
-                            value={form.theme_mode}
-                            onChange={(val) => setForm((p) => ({...p, theme_mode: val as ThemeMode}))}
-                            data={[
-                                {label: 'Dark Mode', value: 'dark'},
-                                {label: 'Light Mode', value: 'light'},
-                            ]}
-                        />
-                    </Group>
-
                     <Group grow>
                         <ColorInput
                             label="Primary Brand Color"

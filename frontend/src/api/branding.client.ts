@@ -44,6 +44,23 @@ export const applyBrandingToDom = (branding: PlatformBrandingSettings) => {
     if (branding.app_name && document.title === 'Hi.Events') {
         document.title = branding.app_name;
     }
+
+    const darkBgLogo = branding.dark_logo_url || branding.logo_url;
+    const lightBgLogo = branding.logo_url || branding.dark_logo_url;
+
+    if (darkBgLogo) {
+        document.querySelectorAll<HTMLImageElement>('img[data-brand-logo="dark"], img[src*="hi-events-text-dark.svg"]').forEach((img) => {
+            img.src = darkBgLogo;
+            if (branding.app_name) img.alt = `${branding.app_name} logo`;
+        });
+    }
+
+    if (lightBgLogo) {
+        document.querySelectorAll<HTMLImageElement>('img[data-brand-logo="light"], img[src*="hi-events-text-light.svg"]').forEach((img) => {
+            img.src = lightBgLogo;
+            if (branding.app_name) img.alt = `${branding.app_name} logo`;
+        });
+    }
 };
 
 export const brandingClient = {
