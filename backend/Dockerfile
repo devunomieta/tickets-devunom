@@ -27,6 +27,7 @@ RUN composer install \
     --optimize-autoloader \
     --prefer-dist \
     && composer require resend/resend-php \
+    --update-no-dev \
     --ignore-platform-reqs \
     --no-interaction \
     --prefer-dist \
