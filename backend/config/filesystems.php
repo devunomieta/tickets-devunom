@@ -53,9 +53,8 @@ return [
             'bucket' => env('AWS_PUBLIC_BUCKET', env('AWS_BUCKET')),
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
-            'visibility' => 'public',
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'throw' => true,
         ],
         's3-private' => [
             'driver' => 's3',

@@ -28,10 +28,14 @@ class UploadPlatformBrandingAssetAction extends BaseAction
         $filename = "branding/{$type}-" . time() . ".{$ext}";
 
         $diskName = (string) config('filesystems.public_disk', env('FILESYSTEM_PUBLIC_DISK', 's3-public'));
-        $stored = Storage::disk($diskName)->put($filename, file_get_contents($file->getRealPath()), 'public');
+        try {
+            $stored = Storage::disk($diskName)->put($filename, file_get_contents($file->getRealPath()));
+        } catch (\Throwable $e) {
+            return $this->errorResponse('R2 upload error: ' . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         if (! $stored) {
-            return $this->errorResponse('Failed to upload branding asset to storage.', Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->errorResponse("Failed to upload branding asset to storage disk '{$diskName}'. Check AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, and AWS_ENDPOINT in Render.", Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         $cdnUrl = rtrim((string) config('app.cdn_url', env('APP_CDN_URL', '')), '/');
