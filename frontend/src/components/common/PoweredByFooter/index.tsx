@@ -80,13 +80,22 @@ export const PoweredByFooter = ({brandingRemoved, ...props}: PoweredByFooterProp
         <>
             {t`Powered by`}{" "}
             <a
+                href="https://cortdevs.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="CortDevs"
+            >
+                CortDevs
+            </a>
+            {" · based on "}
+            <a
                 href={link}
                 target="_blank"
+                rel="noopener noreferrer"
                 title={"Effortlessly manage events and sell tickets online with Hi.Events"}
             >
                 Hi.Events
-            </a>{" "}
-            🚀
+            </a>
         </>
     );
 
