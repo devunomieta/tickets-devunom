@@ -27,6 +27,7 @@ const AdminLayout = () => {
         {link: 'users', label: t`Users`, icon: IconUsers},
         {link: 'events', label: t`Events`, icon: IconCalendar},
         {link: 'orders', label: t`Orders`, icon: IconReceipt},
+        {link: 'payouts', label: t`Payouts`, icon: IconBuildingBank},
         {link: 'announcements', label: t`Announcements`, icon: IconSpeakerphone},
         {link: 'deletion-requests', label: t`Deletion Requests`, icon: IconTrash},
         {link: 'configurations', label: t`Configurations`, icon: IconSettings},

@@ -43,7 +43,6 @@ export const App: FC<
     return (
         <React.StrictMode>
             <MantineProvider
-                defaultColorScheme="dark"
                 cssVariablesResolver={v8CssVariablesResolver}
                 theme={{
                     colors: props.themeColors,

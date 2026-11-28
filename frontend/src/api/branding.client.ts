@@ -16,8 +16,7 @@ export interface PlatformBrandingSettings {
 export const applyBrandingToDom = (branding: PlatformBrandingSettings) => {
     if (typeof document === 'undefined') return;
 
-    const mode: ThemeMode = branding.theme_mode === 'light' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-mantine-color-scheme', mode);
+    document.documentElement.setAttribute('data-mantine-color-scheme', 'light');
 
     if (branding.primary_color) {
         document.documentElement.style.setProperty('--mantine-color-primary-filled', branding.primary_color);

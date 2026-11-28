@@ -646,6 +646,11 @@ $router->middleware(['auth:api'])->group(
         $router->put('/accounts/{account_id}/payment-gateways/{provider}', \HiEvents\Http\Actions\Accounts\UpdateAccountPaymentGatewayAction::class)->whereNumber('account_id');
         $router->put('/admin/branding', \HiEvents\Http\Actions\Admin\UpdatePlatformBrandingAction::class);
         $router->post('/admin/branding/upload', \HiEvents\Http\Actions\Admin\UploadPlatformBrandingAssetAction::class);
+        $router->get('/admin/payouts', \HiEvents\Http\Actions\Admin\Payouts\GetAdminPayoutsAction::class);
+        $router->put('/admin/payouts/{payout_id}', \HiEvents\Http\Actions\Admin\Payouts\UpdateAdminPayoutAction::class)->whereNumber('payout_id');
+        $router->get('/organizers/{organizer_id}/wallet', \HiEvents\Http\Actions\Organizers\Wallet\GetOrganizerWalletAction::class)->whereNumber('organizer_id');
+        $router->put('/organizers/{organizer_id}/wallet/bank-details', \HiEvents\Http\Actions\Organizers\Wallet\SaveOrganizerBankDetailsAction::class)->whereNumber('organizer_id');
+        $router->post('/organizers/{organizer_id}/wallet/request-payout', \HiEvents\Http\Actions\Organizers\Wallet\RequestOrganizerPayoutAction::class)->whereNumber('organizer_id');
         $router->get('/accounts/{account_id}/subscription', GetAccountSubscriptionAction::class)->whereNumber('account_id')->middleware('throttle:60,1,account-subscription');
         $router->post('/accounts/{account_id}/subscription/checkout-session', CreateSubscriptionCheckoutSessionAction::class)->whereNumber('account_id')->middleware('throttle:10,1,account-subscription-checkout');
         $router->post('/accounts/{account_id}/subscription/portal-session', CreateSubscriptionPortalSessionAction::class)->whereNumber('account_id')->middleware('throttle:20,1,account-subscription-portal');

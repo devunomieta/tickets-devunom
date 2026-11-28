@@ -252,6 +252,13 @@ const routes: RouteObject[] = [
                 }
             },
             {
+                path: "payouts",
+                async lazy() {
+                    const Payouts = await import("./components/routes/admin/Payouts");
+                    return { Component: Payouts.default };
+                }
+            },
+            {
                 path: "branding",
                 async lazy() {
                     const Branding = await import("./components/routes/admin/Branding");
