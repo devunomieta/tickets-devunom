@@ -26,6 +26,7 @@ RUN composer install \
     --no-dev \
     --optimize-autoloader \
     --prefer-dist \
+    && composer config --unset repositories \
     && composer require resend/resend-php \
     --update-no-dev \
     --ignore-platform-reqs \
