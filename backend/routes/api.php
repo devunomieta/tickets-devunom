@@ -645,6 +645,7 @@ $router->middleware(['auth:api'])->group(
         $router->get('/accounts/{account_id}/payment-gateways', \HiEvents\Http\Actions\Accounts\GetAccountPaymentGatewaysAction::class)->whereNumber('account_id');
         $router->put('/accounts/{account_id}/payment-gateways/{provider}', \HiEvents\Http\Actions\Accounts\UpdateAccountPaymentGatewayAction::class)->whereNumber('account_id');
         $router->put('/admin/branding', \HiEvents\Http\Actions\Admin\UpdatePlatformBrandingAction::class);
+        $router->post('/admin/branding/upload', \HiEvents\Http\Actions\Admin\UploadPlatformBrandingAssetAction::class);
         $router->get('/accounts/{account_id}/subscription', GetAccountSubscriptionAction::class)->whereNumber('account_id')->middleware('throttle:60,1,account-subscription');
         $router->post('/accounts/{account_id}/subscription/checkout-session', CreateSubscriptionCheckoutSessionAction::class)->whereNumber('account_id')->middleware('throttle:10,1,account-subscription-checkout');
         $router->post('/accounts/{account_id}/subscription/portal-session', CreateSubscriptionPortalSessionAction::class)->whereNumber('account_id')->middleware('throttle:20,1,account-subscription-portal');

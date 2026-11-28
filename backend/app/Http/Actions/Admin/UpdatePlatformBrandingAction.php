@@ -18,6 +18,8 @@ class UpdatePlatformBrandingAction extends BaseAction
         $validated = $request->validate([
             'app_name' => ['required', 'string', 'max:120'],
             'primary_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'theme_mode' => ['required', 'in:dark,light'],
+            'accent_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'logo_url' => ['nullable', 'url', 'max:500'],
             'dark_logo_url' => ['nullable', 'url', 'max:500'],
             'favicon_url' => ['nullable', 'url', 'max:500'],
@@ -27,6 +29,8 @@ class UpdatePlatformBrandingAction extends BaseAction
         $branding->fill([
             'app_name' => trim($validated['app_name']),
             'primary_color' => $validated['primary_color'],
+            'theme_mode' => $validated['theme_mode'],
+            'accent_color' => $validated['accent_color'],
             'logo_url' => $validated['logo_url'] ?: null,
             'dark_logo_url' => $validated['dark_logo_url'] ?: null,
             'favicon_url' => $validated['favicon_url'] ?: null,
