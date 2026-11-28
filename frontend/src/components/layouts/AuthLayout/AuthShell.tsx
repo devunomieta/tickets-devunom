@@ -5,6 +5,7 @@ import {t} from "@lingui/macro";
 import {PoweredByFooter} from "../../common/PoweredByFooter";
 import {LanguageSwitcher} from "../../common/LanguageSwitcher";
 import {getConfig} from "../../../utilites/config.ts";
+import {usePlatformBranding} from "../../../api/branding.client.ts";
 import {isHiEvents} from "../../../utilites/helpers.ts";
 import {showInfo} from "../../../utilites/notifications.tsx";
 
@@ -164,8 +165,10 @@ export const AuthShell = ({children, isStatic = false, ticketPreview}: AuthShell
                     <main className={classes.container}>
                         <div className={classes.logo} onClick={handleLogoClick} style={{cursor: 'pointer'}}>
                             <img
-                                src={getConfig("VITE_APP_LOGO_DARK", "/logos/hi-events-horizontal-light.svg")}
-                                alt={t`${getConfig("VITE_APP_NAME", "Hi.Events")} logo`}
+                                data-brand-logo="light"
+                                src={usePlatformBranding().data?.logo_url || usePlatformBranding().data?.dark_logo_url || getConfig("VITE_APP_LOGO_DARK", "/logos/hi-events-horizontal-light.svg")}
+                                alt={t`${usePlatformBranding().data?.app_name || getConfig("VITE_APP_NAME", "Hi.Events")} logo`}
+                                style={{maxHeight: 40, width: 'auto', objectFit: 'contain'}}
                             />
                         </div>
                         <div className={classes.formArea}>

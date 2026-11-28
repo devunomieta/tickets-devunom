@@ -6,6 +6,7 @@ import classes from './Topbar.module.scss';
 import {BreadcrumbItem} from "../types";
 import {GlobalMenu} from "../../../common/GlobalMenu";
 import { getConfig } from "../../../../utilites/config";
+import { usePlatformBranding } from "../../../../api/branding.client.ts";
 
 interface TopbarProps {
     sidebarOpen: boolean;
@@ -42,7 +43,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                 </div>
                 <div className={classes.logo}>
                     <NavLink to={ `/manage/events` }>
-                        <img data-brand-logo="dark" src={getConfig("VITE_APP_LOGO_LIGHT", "/logos/hi-events-text-dark.svg")} alt={`${getConfig("VITE_APP_NAME", "Hi.Events")} logo`} className={classes.logo}/>
+                        <img data-brand-logo="dark" src={usePlatformBranding().data?.dark_logo_url || usePlatformBranding().data?.logo_url || getConfig("VITE_APP_LOGO_LIGHT", "/logos/hi-events-text-dark.svg")} alt={`${usePlatformBranding().data?.app_name || getConfig("VITE_APP_NAME", "Hi.Events")} logo`} className={classes.logo} style={{maxHeight: 32, width: 'auto', objectFit: 'contain'}}/>
                     </NavLink>
                 </div>
 

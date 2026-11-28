@@ -1,5 +1,6 @@
 import {api} from "./client.ts";
 import {publicApi} from "./public-client.ts";
+import {useQuery} from "@tanstack/react-query";
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -85,4 +86,12 @@ export const brandingClient = {
         });
         return response.data.data;
     },
+};
+
+export const usePlatformBranding = () => {
+    return useQuery({
+        queryKey: ['platform-branding'],
+        queryFn: brandingClient.getBranding,
+        staleTime: 60_000,
+    });
 };

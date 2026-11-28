@@ -8,6 +8,7 @@ import {matchPath, NavLink, useLocation, useResolvedPath} from "react-router";
 import classNames from "classnames";
 import {useMediaQuery} from "@mantine/hooks";
 import {getConfig} from "../../../../utilites/config.ts";
+import {usePlatformBranding} from "../../../../api/branding.client.ts";
 
 interface SidebarProps {
     sidebarOpen: boolean | null;
@@ -114,8 +115,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <NavLink to={`/manage/events`}>
                     <img
                         data-brand-logo="dark"
-                        src={getConfig("VITE_APP_LOGO_LIGHT", "/logos/hi-events-text-dark.svg")}
-                        alt={t`${getConfig("VITE_APP_NAME", "Hi.Events")} logo`}
+                        src={usePlatformBranding().data?.dark_logo_url || usePlatformBranding().data?.logo_url || getConfig("VITE_APP_LOGO_LIGHT", "/logos/hi-events-text-dark.svg")}
+                        alt={t`${usePlatformBranding().data?.app_name || getConfig("VITE_APP_NAME", "Hi.Events")} logo`}
+                        style={{maxHeight: 34, width: 'auto', objectFit: 'contain'}}
                     />
                 </NavLink>
             </div>
